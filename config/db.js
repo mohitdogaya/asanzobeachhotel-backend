@@ -1,4 +1,5 @@
 import { Sequelize } from "sequelize";
+import mysql2 from "mysql2";
 import bcrypt from "bcryptjs";
 import { 
   models, 
@@ -13,6 +14,9 @@ export const sequelize = new Sequelize(
         host: process.env.MYSQL_HOST,
         port: Number(process.env.MYSQL_PORT || 3306),
         dialect: "mysql",
+        // Keep the dialect driver as a static dependency so Vercel's bundler
+        // includes it when tracing Sequelize's dynamically loaded dialect.
+        dialectModule: mysql2,
         logging: false,
         pool: {
             max: Number(process.env.MYSQL_CONNECTION_LIMIT || 10),
