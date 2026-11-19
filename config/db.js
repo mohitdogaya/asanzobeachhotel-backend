@@ -1,6 +1,9 @@
 import { Sequelize } from "sequelize";
 import bcrypt from "bcryptjs";
-import { models, registerModels } from "../models/index.js";
+import { 
+  models, 
+  registerModels 
+} from "../models/index.js";
 
 export const sequelize = new Sequelize(
     process.env.MYSQL_DATABASE || "",
