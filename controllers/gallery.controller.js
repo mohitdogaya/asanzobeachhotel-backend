@@ -1,6 +1,6 @@
 import { Op } from "sequelize";
 import { models } from "../models/index.js";
-import { getPublicMediaUrl } from "../utils/media.js";
+import { getPublicMediaUrl, normalizePublicMediaUrl } from "../utils/media.js";
 import { getPagination, paginationMeta, sendError, sendSuccess, toPlain } from "../utils/httpResponse.js";
 
 export async function addGalleryImage(req, res) {
@@ -16,14 +16,14 @@ export async function getGalleryList(req, res) {
     where: { image: { [Op.like]: search } },
     order: [["created_at", "DESC"]], limit, offset,
   });
-  return sendSuccess(res, result.rows.map(toPlain), "Gallery loaded", 200, {
+  return sendSuccess(res, result.rows.map((image) => serializeGalleryImage(req, image)), "Gallery loaded", 200, {
     pagination: paginationMeta(page, limit, result.count),
   });
 }
 
 export async function getGalleryDetails(req, res) {
   const image = await models.GalleryImage.findByPk(req.params.id);
-  return image ? sendSuccess(res, toPlain(image)) : sendError(res, "Gallery image not found", 404);
+  return image ? sendSuccess(res, serializeGalleryImage(req, image)) : sendError(res, "Gallery image not found", 404);
 }
 
 export async function updateGalleryImage(req, res) {
@@ -40,7 +40,15 @@ export async function deleteGalleryImage(req, res) {
   return deleted ? sendSuccess(res, null, "Gallery image deleted") : sendError(res, "Gallery image not found", 404);
 }
 
-export async function getPublicGallery(_req, res) {
+export async function getPublicGallery(req, res) {
   const images = await models.GalleryImage.findAll({ order: [["created_at", "DESC"]] });
-  return sendSuccess(res, images.map(toPlain));
+  return sendSuccess(res, images.map((image) => serializeGalleryImage(req, image)));
+}
+
+function serializeGalleryImage(req, image) {
+  const plainImage = toPlain(image);
+  return {
+    ...plainImage,
+    image: normalizePublicMediaUrl(req, plainImage.image),
+  };
 }
