@@ -1,12 +1,12 @@
 import { models } from "../models/index.js";
-import { getPublicMediaUrl, parseArray, toBoolean } from "../utils/media.js";
+import { getPublicMediaUrl, normalizePublicMediaUrl, parseArray, toBoolean } from "../utils/media.js";
 import { discardUploadedFiles, removeUnreferencedUploadedImages } from "../utils/mediaCleanup.js";
 import { getPagination, paginationMeta, sendError, sendSuccess, toPlain } from "../utils/httpResponse.js";
 
 export async function getRooms(req, res) {
   const { page, limit, offset } = getPagination(req.query);
   const result = await models.Room.findAndCountAll({ order: [["created_at", "DESC"]], limit, offset });
-  return sendSuccess(res, result.rows.map(toPlain), "Rooms loaded", 200, {
+  return sendSuccess(res, result.rows.map((room) => serializeRoom(req, room)), "Rooms loaded", 200, {
     pagination: paginationMeta(page, limit, result.count),
   });
 }
@@ -34,7 +34,7 @@ export async function createRoom(req, res) {
 
 export async function getRoomById(req, res) {
   const room = await models.Room.findByPk(req.params.id);
-  return room ? sendSuccess(res, toPlain(room)) : sendError(res, "Room not found", 404);
+  return room ? sendSuccess(res, serializeRoom(req, room)) : sendError(res, "Room not found", 404);
 }
 
 export async function updateRoom(req, res) {
@@ -92,9 +92,17 @@ export async function deleteRoom(req, res) {
   return sendSuccess(res, null, "Room deleted");
 }
 
-export async function getPublicRooms(_req, res) {
+export async function getPublicRooms(req, res) {
   const rooms = await models.Room.findAll({
     where: { availability: true }, order: [["created_at", "DESC"]],
   });
-  return sendSuccess(res, rooms.map(toPlain));
+  return sendSuccess(res, rooms.map((room) => serializeRoom(req, room)));
+}
+
+function serializeRoom(req, room) {
+  const plainRoom = toPlain(room);
+  return {
+    ...plainRoom,
+    images: parseArray(plainRoom.images).map((image) => normalizePublicMediaUrl(req, image)),
+  };
 }
