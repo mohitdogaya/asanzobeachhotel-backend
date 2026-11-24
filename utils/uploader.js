@@ -6,6 +6,9 @@ import crypto from "node:crypto";
 
 const uploadDirectory = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "uploads");
 fs.mkdirSync(uploadDirectory, { recursive: true });
+export const uploadMaxBytes = Number(process.env.UPLOAD_MAX_BYTES || 8 * 1024 * 1024);
+export const uploadMaxMegabytes = Math.ceil(uploadMaxBytes / (1024 * 1024));
+const supportedImageTypes = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
 
 const storage = multer.diskStorage({
   destination: (_req, _file, callback) => callback(null, uploadDirectory),
@@ -17,9 +20,9 @@ const storage = multer.diskStorage({
 
 export const upload = multer({
   storage,
-  limits: { fileSize: Number(process.env.UPLOAD_MAX_BYTES || 8 * 1024 * 1024), files: 10 },
+  limits: { fileSize: uploadMaxBytes, files: 10 },
   fileFilter: (_req, file, callback) => {
-    if (file.mimetype?.startsWith("image/")) return callback(null, true);
-    return callback(Object.assign(new Error("Only image uploads are supported"), { status: 400 }));
+    if (supportedImageTypes.has(file.mimetype)) return callback(null, true);
+    return callback(Object.assign(new Error("Unsupported file type. Choose a JPG, PNG, WebP, or GIF image."), { status: 400 }));
   },
 });

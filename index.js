@@ -8,6 +8,7 @@ import { fileURLToPath } from "node:url";
 import { sequelize, initializeDatabase, seedAdmin } from "./config/db.js";
 import hotelRoutes from "./routes/hotel.routes.js";
 import { seedHotelContent } from "./config/seedHotelContent.js";
+import { uploadMaxMegabytes } from "./utils/uploader.js";
 
 const app = express();
 const dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -29,8 +30,17 @@ app.use("/api", hotelRoutes);
 
 app.use((error, _req, res, _next) => {
   console.error(error);
-  const status = error.status || (error.code === "LIMIT_FILE_SIZE" ? 413 : 500);
-  res.status(status).json({ status: false, message: status === 500 ? "Internal server error" : error.message });
+  if (error.code === "LIMIT_FILE_SIZE") {
+    return res.status(413).json({
+      status: false,
+      message: `Image is too large. The maximum file size is ${uploadMaxMegabytes} MB. Choose a smaller JPG, PNG, WebP, or GIF image.`,
+    });
+  }
+  if (error.code?.startsWith("LIMIT_")) {
+    return res.status(400).json({ status: false, message: error.message });
+  }
+  const status = error.status || 500;
+  return res.status(status).json({ status: false, message: status === 500 ? "Internal server error" : error.message });
 });
 
 const port = Number(process.env.PORT || 4000);
